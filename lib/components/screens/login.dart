@@ -1,5 +1,4 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_login/flutter_login.dart';
 import 'package:githubrag/components/screens/chatscreen.dart';
@@ -19,8 +18,8 @@ class LoginScreen extends StatelessWidget {
       // Intentar iniciar sesión con Firebase Authentication
       UserCredential userCredential =
           await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: kDebugMode ? 'lasheralberto@gmail.com' : data.name,
-        password: kDebugMode ? 'economiaUm94!' : data.password,
+        email:  data.name,
+        password: data.password,
       );
       // Si el inicio de sesión es exitoso, devolver null (ningún error)
       return null;
