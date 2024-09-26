@@ -19,7 +19,7 @@ void main() async {
   // Ejecuta la aplicación dentro de un runZonedGuarded para capturar errores
   runZonedGuarded(
     () {
-      runApp(MyApp());
+      runApp(const MyApp());
     },
     (error, stackTrace) {
       print('Runzone error: $error');
@@ -42,7 +42,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: AppColors.background,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: kDebugMode == true ? ChatScreen() : const LoginScreen(),
+      home: kDebugMode == true ? const ChatScreen() : const LoginScreen(),
     );
   }
 }
