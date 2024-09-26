@@ -35,7 +35,7 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     indexSelected = 0;
     _gitcontroller.text = KeyConstants.gitToken;
-    _openaicontroller.text = KeyConstants.openaiToken;
+    _openaicontroller.text = KeyConstants.openaiKey;
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       userData = await _getUserData();
@@ -498,7 +498,7 @@ class _ChatScreenState extends State<ChatScreen> {
     // Datos para enviar en el cuerpo de la solicitud
     Map<String, dynamic> bodyData = {
       "github": _gitcontroller.text,
-      "openai": KeyConstants.openaiToken,
+      "openai": KeyConstants.openaiKey,
       "username": user,
     };
     var jsonBody = json.encode(bodyData);
