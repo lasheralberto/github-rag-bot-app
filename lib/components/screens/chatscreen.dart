@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:githubrag/constants/keys.dart';
-import 'package:http_parser/http_parser.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:githubrag/models/colors.dart';
+import 'package:githubrag/models/gitbackend.dart';
 import 'package:http/http.dart' as http;
-import 'package:encrypt/encrypt.dart' as encrypt;
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -22,17 +22,21 @@ class _ChatScreenState extends State<ChatScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final StreamController<List<Map<String, dynamic>>> _chatStreamController =
       StreamController<List<Map<String, dynamic>>>.broadcast();
+  var focusNode = FocusNode();
 
   String? currentUser;
   String? selectedRepo;
   List<String> userRepos = [];
   bool? reposLoaded = false;
-  dynamic? userData;
+  dynamic userData;
   int? indexSelected;
+  GitHubRagApi? apiGitInstance;
+  String? instanceKeyGit;
 
   @override
   void initState() {
     super.initState();
+    ServicesBinding.instance.keyboard.addHandler(_onKey);
     indexSelected = 0;
     _gitcontroller.text = KeyConstants.gitToken;
     _openaicontroller.text = KeyConstants.openaiKey;
@@ -41,11 +45,23 @@ class _ChatScreenState extends State<ChatScreen> {
       userData = await _getUserData();
       currentUser = userData.toString();
       var repos = await _fetchRepos(currentUser);
+      final api = GitHubRagApi(UrlConstants.gcloudService);
       setState(() {
         reposLoaded = repos;
+        apiGitInstance = api;
       });
       await _initializeChatStream();
     });
+  }
+
+   bool _onKey(KeyEvent event) {
+
+    if (event is KeyDownEvent && selectedRepo != null && event.logicalKey == LogicalKeyboardKey.enter ) {
+     
+      _sendMessage();
+    } 
+
+    return false;
   }
 
   Future<void> _initializeChatStream() async {
@@ -57,7 +73,7 @@ class _ChatScreenState extends State<ChatScreen> {
         .snapshots()
         .listen((snapshot) {
       List<Map<String, dynamic>> messages = snapshot.docs
-          .map((doc) => doc.data() as Map<String, dynamic>)
+          .map((doc) => doc.data())
           .toList();
       _chatStreamController.add(messages);
     });
@@ -76,7 +92,15 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: _buildRepoList(),
               ),
               const SizedBox(width: 16),
-              Expanded(
+              selectedRepo == null ? Expanded(child: Positioned.fill(
+            child: Opacity(
+              opacity: 0.8, // Ajusta la opacidad si quieres que la imagen sea más sutil
+              child: Image.asset(
+                'images/select_repo.png', // Ruta de la imagen en assets
+                fit: BoxFit.fitHeight, // Hace que la imagen cubra todo el espacio
+              ),
+            ),
+          )): Expanded(
                 flex: 3,
                 child: _buildChatArea(),
               ),
@@ -95,12 +119,12 @@ class _ChatScreenState extends State<ChatScreen> {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            offset: Offset(-3, -3),
+            offset: const Offset(-3, -3),
             blurRadius: 10,
           ),
           BoxShadow(
             color: Colors.white.withOpacity(0.7),
-            offset: Offset(3, 3),
+            offset: const Offset(3, 3),
             blurRadius: 10,
           ),
         ],
@@ -123,12 +147,12 @@ class _ChatScreenState extends State<ChatScreen> {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            offset: Offset(-3, -3),
+            offset: const Offset(-3, -3),
             blurRadius: 10,
           ),
           BoxShadow(
             color: Colors.white.withOpacity(0.7),
-            offset: Offset(3, 3),
+            offset: const Offset(3, 3),
             blurRadius: 10,
           ),
         ],
@@ -137,7 +161,7 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           IconButton(
             onPressed: () => _showTokensDialog(context),
-            icon: Icon(Icons.settings, color: AppColors.textPrimary),
+            icon: const Icon(Icons.settings, color: AppColors.textPrimary),
           ),
           const Padding(
             padding: EdgeInsets.all(16.0),
@@ -170,7 +194,21 @@ class _ChatScreenState extends State<ChatScreen> {
                           setState(() {
                             selectedRepo = userRepos[index];
                             indexSelected = index;
+                                // Inicializar el repositorio
+
                           });
+
+                         String? _instanceKeyGit = await apiGitInstance?.initializeRepo(
+                            githubToken: _gitcontroller.text,
+                            openaiKey: _openaicontroller.text,
+                            username: currentUser.toString(),
+                            repoName: selectedRepo.toString(),
+                          );
+
+                          setState(() {
+                            instanceKeyGit = _instanceKeyGit;
+                          });
+
                           await _initializeChatStream();
                         },
                       );
@@ -195,18 +233,7 @@ class _ChatScreenState extends State<ChatScreen> {
             decoration: BoxDecoration(
               color: AppColors.background,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  offset: Offset(-3, -3),
-                  blurRadius: 10,
-                ),
-                BoxShadow(
-                  color: Colors.white.withOpacity(0.7),
-                  offset: Offset(3, 3),
-                  blurRadius: 10,
-                ),
-              ],
+             
             ),
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -251,21 +278,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildTextField(TextEditingController controller, String hintText) {
     return Container(
+      width: MediaQuery.of(context).size.width / 5,
+       height: MediaQuery.of(context).size.height / 5,
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            offset: Offset(-2, -2),
-            blurRadius: 6,
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.7),
-            offset: Offset(2, 2),
-            blurRadius: 6,
-          ),
-        ],
+       
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: TextFormField(
@@ -283,24 +301,9 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildChatHeader() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            offset: Offset(-2, -2),
-            blurRadius: 5,
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.7),
-            offset: Offset(2, 2),
-            blurRadius: 5,
-          ),
-        ],
+      decoration: const BoxDecoration(
+        color: Colors.transparent,
+       
       ),
       child: Text(
         selectedRepo.toString(),
@@ -325,12 +328,12 @@ class _ChatScreenState extends State<ChatScreen> {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            offset: Offset(-3, -3),
+            offset: const Offset(-3, -3),
             blurRadius: 10,
           ),
           BoxShadow(
             color: Colors.white.withOpacity(0.7),
-            offset: Offset(3, 3),
+            offset: const Offset(3, 3),
             blurRadius: 10,
           ),
         ],
@@ -347,13 +350,25 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: _sendMessage,
-            style: ElevatedButton.styleFrom(
-              shape: const CircleBorder(),
-              backgroundColor: AppColors.accent,
+          KeyboardListener(
+            focusNode: focusNode,
+            onKeyEvent: (event) {
+
+               if ( event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter ) {
+                _sendMessage();
+            // Do something
+          }
+              
+            },
+            
+            child: ElevatedButton(
+              onPressed: _sendMessage,
+              style: ElevatedButton.styleFrom(
+                shape: const CircleBorder(),
+                backgroundColor: AppColors.accent,
+              ),
+              child: const Icon(Icons.send, color: AppColors.background),
             ),
-            child: const Icon(Icons.send, color: AppColors.background),
           ),
         ],
       ),
@@ -391,18 +406,7 @@ class _ChatScreenState extends State<ChatScreen> {
         decoration: BoxDecoration(
           color: isUser ? AppColors.accent : AppColors.cardBackground,
           borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              offset: Offset(-2, -2),
-              blurRadius: 6,
-            ),
-            BoxShadow(
-              color: Colors.white.withOpacity(0.7),
-              offset: Offset(2, 2),
-              blurRadius: 6,
-            ),
-          ],
+          
         ),
         child: Text(
           message['text'],
@@ -433,7 +437,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
       // Get bot response
       try {
-        var botResponse = await _sendMessageToLangChain(userMessage);
+
+        // Hacer una pregunta
+    final answer = await apiGitInstance?.askRepo(
+      instanceKey: instanceKeyGit.toString(),
+      question: 'What is the main purpose of this repository?',
+    );
+        
+        //var botResponse = await _sendMessageToLangChain(userMessage);
 
         // Add bot response to Firestore
         await _firestore
@@ -441,7 +452,7 @@ class _ChatScreenState extends State<ChatScreen> {
             .doc('$currentUser-$selectedRepo')
             .collection('messages')
             .add({
-          'text': botResponse,
+          'text': answer,
           'role': 'bot',
           'timestamp': FieldValue.serverTimestamp(),
         });
@@ -473,7 +484,7 @@ class _ChatScreenState extends State<ChatScreen> {
     };
 
     var url =
-        'https://gitbotrag-842301100243.europe-west2.run.app/get-user-data-github/';
+        '${UrlConstants.gcloudService}/get-user-data-github/';
 
     final response =
         await http.post(Uri.parse(url), headers: headers, body: jsonBody);
@@ -510,7 +521,7 @@ class _ChatScreenState extends State<ChatScreen> {
     };
 
     var url =
-        'https://gitbotrag-842301100243.europe-west2.run.app/get-repos-user/';
+        '${UrlConstants.gcloudService}/get-repos-user/';
 
     final response =
         await http.post(Uri.parse(url), headers: headers, body: jsonBody);
@@ -533,7 +544,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<String> _sendMessageToLangChain(String message) async {
     // URL del servidor
     var url = Uri.parse(
-        'https://gitbotrag-842301100243.europe-west2.run.app/ask-repo/');
+        '${UrlConstants.gcloudService}/ask-repo/');
 
     // Token de autenticación (debe coincidir con el valor de `VALID_API_KEY` en el servidor)
     String apiKey = '123';
@@ -585,6 +596,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    ServicesBinding.instance.keyboard.removeHandler(_onKey);
     _messageController.dispose();
     super.dispose();
   }
