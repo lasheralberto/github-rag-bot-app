@@ -32,12 +32,14 @@ class _ChatScreenState extends State<ChatScreen> {
   int? indexSelected;
   GitHubRagApi? apiGitInstance;
   String? instanceKeyGit;
+  bool? repoLoading;
 
   @override
   void initState() {
     super.initState();
     ServicesBinding.instance.keyboard.addHandler(_onKey);
     indexSelected = 0;
+    repoLoading = false;
     _gitcontroller.text = KeyConstants.gitToken;
     _openaicontroller.text = KeyConstants.openaiKey;
 
@@ -54,12 +56,12 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-   bool _onKey(KeyEvent event) {
-
-    if (event is KeyDownEvent && selectedRepo != null && event.logicalKey == LogicalKeyboardKey.enter ) {
-     
+  bool _onKey(KeyEvent event) {
+    if (event is KeyDownEvent &&
+        selectedRepo != null &&
+        event.logicalKey == LogicalKeyboardKey.enter) {
       _sendMessage();
-    } 
+    }
 
     return false;
   }
@@ -72,9 +74,8 @@ class _ChatScreenState extends State<ChatScreen> {
         .orderBy('timestamp', descending: true)
         .snapshots()
         .listen((snapshot) {
-      List<Map<String, dynamic>> messages = snapshot.docs
-          .map((doc) => doc.data())
-          .toList();
+      List<Map<String, dynamic>> messages =
+          snapshot.docs.map((doc) => doc.data()).toList();
       _chatStreamController.add(messages);
     });
   }
@@ -82,6 +83,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -92,18 +94,29 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: _buildRepoList(),
               ),
               const SizedBox(width: 16),
-              selectedRepo == null ? Expanded(child: Positioned.fill(
-            child: Opacity(
-              opacity: 0.8, // Ajusta la opacidad si quieres que la imagen sea más sutil
-              child: Image.asset(
-                'images/select_repo.png', // Ruta de la imagen en assets
-                fit: BoxFit.fitHeight, // Hace que la imagen cubra todo el espacio
-              ),
-            ),
-          )): Expanded(
-                flex: 3,
-                child: _buildChatArea(),
-              ),
+              selectedRepo == null
+                  ? Expanded(
+                      child: Positioned.fill(
+                      child: Opacity(
+                        opacity:
+                            0.8, // Ajusta la opacidad si quieres que la imagen sea más sutil
+                        child: Image.asset(
+                          'images/select_repo.png', // Ruta de la imagen en assets
+                          fit: BoxFit
+                              .fitHeight, // Hace que la imagen cubra todo el espacio
+                        ),
+                      ),
+                    ))
+                  : repoLoading == true
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: Expanded(
+                              child: CircularProgressIndicator.adaptive()))
+                      : Expanded(
+                          flex: 3,
+                          child: _buildChatArea(),
+                        ),
             ],
           ),
         ),
@@ -193,12 +206,13 @@ class _ChatScreenState extends State<ChatScreen> {
                         onTap: () async {
                           setState(() {
                             selectedRepo = userRepos[index];
+                            repoLoading = true;
                             indexSelected = index;
-                                // Inicializar el repositorio
-
+                            // Inicializar el repositorio
                           });
 
-                         String? _instanceKeyGit = await apiGitInstance?.initializeRepo(
+                          String? _instanceKeyGit =
+                              await apiGitInstance?.initializeRepo(
                             githubToken: _gitcontroller.text,
                             openaiKey: _openaicontroller.text,
                             username: currentUser.toString(),
@@ -207,6 +221,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
                           setState(() {
                             instanceKeyGit = _instanceKeyGit;
+                            repoLoading = false;
                           });
 
                           await _initializeChatStream();
@@ -233,7 +248,6 @@ class _ChatScreenState extends State<ChatScreen> {
             decoration: BoxDecoration(
               color: AppColors.background,
               borderRadius: BorderRadius.circular(20),
-             
             ),
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -279,11 +293,10 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildTextField(TextEditingController controller, String hintText) {
     return Container(
       width: MediaQuery.of(context).size.width / 5,
-       height: MediaQuery.of(context).size.height / 5,
+      height: MediaQuery.of(context).size.height / 5,
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(12),
-       
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: TextFormField(
@@ -303,7 +316,6 @@ class _ChatScreenState extends State<ChatScreen> {
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
         color: Colors.transparent,
-       
       ),
       child: Text(
         selectedRepo.toString(),
@@ -353,14 +365,12 @@ class _ChatScreenState extends State<ChatScreen> {
           KeyboardListener(
             focusNode: focusNode,
             onKeyEvent: (event) {
-
-               if ( event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter ) {
+              if (event is KeyDownEvent &&
+                  event.logicalKey == LogicalKeyboardKey.enter) {
                 _sendMessage();
-            // Do something
-          }
-              
+                // Do something
+              }
             },
-            
             child: ElevatedButton(
               onPressed: _sendMessage,
               style: ElevatedButton.styleFrom(
@@ -406,7 +416,6 @@ class _ChatScreenState extends State<ChatScreen> {
         decoration: BoxDecoration(
           color: isUser ? AppColors.accent : AppColors.cardBackground,
           borderRadius: BorderRadius.circular(15),
-          
         ),
         child: Text(
           message['text'],
@@ -437,13 +446,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
       // Get bot response
       try {
-
         // Hacer una pregunta
-    final answer = await apiGitInstance?.askRepo(
-      instanceKey: instanceKeyGit.toString(),
-      question: 'What is the main purpose of this repository?',
-    );
-        
+        final answer = await apiGitInstance?.askRepo(
+          username: currentUser.toString(),
+          reponame: selectedRepo.toString(),
+          question: userMessage,
+        );
+
         //var botResponse = await _sendMessageToLangChain(userMessage);
 
         // Add bot response to Firestore
@@ -483,8 +492,7 @@ class _ChatScreenState extends State<ChatScreen> {
       "Accept": "application/json",
     };
 
-    var url =
-        '${UrlConstants.gcloudService}/get-user-data-github/';
+    var url = '${UrlConstants.gcloudService}/get-user-data-github/';
 
     final response =
         await http.post(Uri.parse(url), headers: headers, body: jsonBody);
@@ -520,8 +528,7 @@ class _ChatScreenState extends State<ChatScreen> {
       "Accept": "application/json",
     };
 
-    var url =
-        '${UrlConstants.gcloudService}/get-repos-user/';
+    var url = '${UrlConstants.gcloudService}/get-repos-user/';
 
     final response =
         await http.post(Uri.parse(url), headers: headers, body: jsonBody);
@@ -543,8 +550,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<String> _sendMessageToLangChain(String message) async {
     // URL del servidor
-    var url = Uri.parse(
-        '${UrlConstants.gcloudService}/ask-repo/');
+    var url = Uri.parse('${UrlConstants.gcloudService}/ask-repo/');
 
     // Token de autenticación (debe coincidir con el valor de `VALID_API_KEY` en el servidor)
     String apiKey = '123';

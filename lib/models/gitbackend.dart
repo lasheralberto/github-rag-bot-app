@@ -25,21 +25,23 @@ class GitHubRagApi {
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      return data['instance_key'];
+      return data;
     } else {
       throw Exception('Failed to initialize repository: ${response.body}');
     }
   }
 
   Future<String> askRepo({
-    required String instanceKey,
+    required String username,
+    required String reponame,
     required String question,
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/ask-repo/'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
-        'instance_key': instanceKey,
+        'username': username,
+        'repo_name':reponame,
         'question': question,
       }),
     );
