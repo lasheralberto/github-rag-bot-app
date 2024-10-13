@@ -6,10 +6,9 @@ class GitHubRagApi {
 
   GitHubRagApi(this.baseUrl);
 
-  Future<String> initializeRepo({
+  Future<Map<String, dynamic>?> initializeRepo({
     required String githubToken,
     required String openaiKey,
-    required String username,
     required String repoName,
   }) async {
     final response = await http.post(
@@ -18,7 +17,6 @@ class GitHubRagApi {
       body: json.encode({
         'github': githubToken,
         'openai': openaiKey,
-        'username': username,
         'repo_name': repoName,
       }),
     );
@@ -32,7 +30,6 @@ class GitHubRagApi {
   }
 
   Future<String> askRepo({
-    required String username,
     required String reponame,
     required String question,
   }) async {
@@ -40,8 +37,7 @@ class GitHubRagApi {
       Uri.parse('$baseUrl/ask-repo/'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
-        'username': username,
-        'repo_name':reponame,
+        'repo_name': reponame,
         'question': question,
       }),
     );

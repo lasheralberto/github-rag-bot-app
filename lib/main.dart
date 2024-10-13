@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -31,15 +32,15 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Chat con Firebase',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.blueGrey,
-        primaryColor: AppColors.accent,
-        scaffoldBackgroundColor: AppColors.background,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: kDebugMode == true ? const ChatScreen() : const LoginScreen(),
-    );
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          primarySwatch: Colors.blueGrey,
+          primaryColor: AppColors.accent,
+          scaffoldBackgroundColor: AppColors.background,
+          visualDensity: VisualDensity.adaptivePlatformDensity,
+        ),
+        home: FirebaseAuth.instance.currentUser == null
+            ? LoginScreen()
+            : ChatScreen());
   }
 }

@@ -1,92 +1,157 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_login/flutter_login.dart';
 import 'package:githubrag/components/screens/chatscreen.dart';
+import 'package:githubrag/components/widgets/github.dart';
+import 'package:githubrag/models/colors.dart';
 
-const users = {
-  'lasheralberto@gmail.com': '12345',
-  'hunter@gmail.com': 'hunter',
-};
+class LoginScreen extends StatefulWidget {
+  @override
+  _LoginScreenState createState() => _LoginScreenState();
+}
 
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  int _currentIndex = 0;
 
-  Duration get loginTime => const Duration(milliseconds: 2250);
+  final List<String> slogans = [
+    "Decode your team's code like a pro!",
+    "Ask it, crack it, code it!",
+    "Crack the code, ask away!",
+  ];
 
-  Future<String?> _authUser(LoginData data) async {
-    try {
-      // Intentar iniciar sesión con Firebase Authentication
-      UserCredential userCredential =
-          await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email:  data.name,
-        password: data.password,
-      );
-      // Si el inicio de sesión es exitoso, devolver null (ningún error)
-      return null;
-    } on FirebaseAuthException catch (e) {
-      // Manejar los diferentes tipos de errores
-      if (e.code == 'user-not-found') {
-        return 'User not exists';
-      } else if (e.code == 'wrong-password') {
-        return 'Password does not match';
-      } else {
-        return 'An error occurred: ${e.message}';
+  @override
+  void initState() {
+    super.initState();
+
+    // Inicializamos el controlador de animación
+    _controller = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        // Cambia el texto al completar la animación de desaparición
+        setState(() {
+          _currentIndex = (_currentIndex + 1) % slogans.length;
+        });
+        _controller.reverse();
+      } else if (status == AnimationStatus.dismissed) {
+        // Inicia la animación para que vuelva a aparecer
+        _controller.forward();
       }
-    }
+    });
+
+    // Comienza la animación
+    _controller.forward();
   }
 
-  Future<String?> _signupUser(SignupData data) async {
-    try {
-      // Intentar registrar un nuevo usuario con Firebase Authentication
-      UserCredential userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: data.name.toString(),
-        password: data.password.toString(),
-      );
-      // Si el registro es exitoso, devolver null (sin error)
-      return null;
-    } on FirebaseAuthException catch (e) {
-      // Manejar los diferentes tipos de errores durante el registro
-      if (e.code == 'email-already-in-use') {
-        return 'The email is already registered';
-      } else if (e.code == 'weak-password') {
-        return 'The password is too weak';
-      } else {
-        return 'An error occurred: ${e.message}';
-      }
-    }
-  }
-
-  Future<String?> _recoverPassword(String email) async {
-    try {
-      // Enviar el correo electrónico de restablecimiento de contraseña a través de Firebase
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-      // Si es exitoso, devolver null (sin error)
-      return null;
-    } on FirebaseAuthException catch (e) {
-      // Manejar los errores comunes
-      if (e.code == 'user-not-found') {
-        return 'User not exists';
-      } else {
-        return 'An error occurred: ${e.message}';
-      }
-    }
+  @override
+  void dispose() {
+    _controller.dispose(); // Liberamos los recursos
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FlutterLogin(
-      // loginProviders: [LoginProvider(icon: Icons.login, callback: () {GoogleLogin})],
-
-      ///logo: const AssetImage('assets/images/ecorp-lightblue.png'),
-      onLogin: _authUser,
-      onSignup: _signupUser,
-      onSubmitAnimationCompleted: () {
-        Navigator.of(context).pushReplacement(MaterialPageRoute(
-          builder: (context) => const ChatScreen(),
-        ));
-      },
-      onRecoverPassword: _recoverPassword,
+    return Scaffold(
+      backgroundColor: AppColors.loginBackground,
+      body: Center(
+        // Añadimos un Center para alinear todo el contenido centrado
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(40.0),
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.center, // Centramos horizontalmente
+              mainAxisAlignment:
+                  MainAxisAlignment.center, // Centramos verticalmente
+              children: [
+                AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) {
+                    return ShaderMask(
+                      shaderCallback: (rect) {
+                        return LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.blueAccent,
+                            Colors.greenAccent,
+                            Colors.purpleAccent,
+                          ],
+                          stops: [
+                            _controller.value - 0.3,
+                            _controller.value,
+                            _controller.value + 0.3,
+                          ],
+                        ).createShader(rect);
+                      },
+                      child: Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.center, // Centramos el Row
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                              height: 100,
+                              width: 100,
+                              child: Image.asset('images/logo.png')),
+                          const Text(
+                            "RAG-iT",
+                            style: TextStyle(
+                              fontSize: 80,
+                              fontWeight: FontWeight.bold,
+                              color: Colors
+                                  .white, // Este color será afectado por el Shader
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 20),
+                FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Text(
+                    slogans[_currentIndex],
+                    textAlign: TextAlign
+                        .center, // Aseguramos que el texto esté centrado
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                GitHubLoginButton(
+                  onUserData: (user) {
+                    if (FirebaseAuth.instance.currentUser != null) {
+                      // Retrasa la navegación hasta el siguiente ciclo de renderizado
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        Navigator.push(context,
+                            MaterialPageRoute(builder: (context) {
+                          return const ChatScreen();
+                        }));
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

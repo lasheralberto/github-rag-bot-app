@@ -1,12 +1,24 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
+//import 'package:appwrite/appwrite.dart' as appw;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
+import 'package:githubrag/components/widgets/codeviewer.dart';
+import 'package:githubrag/components/widgets/loadinggif.dart';
+import 'package:githubrag/components/widgets/loadingindicator.dart';
+import 'package:githubrag/components/widgets/notrelevantfiles.dart';
+import 'package:githubrag/components/widgets/relevantfiles.dart';
 import 'package:githubrag/constants/keys.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:githubrag/models/colors.dart';
 import 'package:githubrag/models/gitbackend.dart';
+import 'package:githubrag/components/widgets/github.dart';
+import 'package:githubrag/models/text.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+import 'package:firebase_auth/firebase_auth.dart' as auth;
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -15,7 +27,8 @@ class ChatScreen extends StatefulWidget {
   _ChatScreenState createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _messageController = TextEditingController();
   final TextEditingController _openaicontroller = TextEditingController();
   final TextEditingController _gitcontroller = TextEditingController();
@@ -26,34 +39,50 @@ class _ChatScreenState extends State<ChatScreen> {
 
   String? currentUser;
   String? selectedRepo;
-  List<String> userRepos = [];
+  List<Map<String, dynamic>> userRepos = [];
   bool? reposLoaded = false;
-  dynamic userData;
+
   int? indexSelected;
   GitHubRagApi? apiGitInstance;
   String? instanceKeyGit;
   bool? repoLoading;
+  User? userData;
+  bool? isGitLogged;
+  bool? isMessageRepliedByBot;
+  late List<dynamic> notRelevantFiles;
+  late List<dynamic> RelevantFiles;
+
+  late AnimationController _controller;
+  late Animation<double> _animation;
 
   @override
   void initState() {
     super.initState();
+    RelevantFiles = [];
+    notRelevantFiles = [];
+    isGitLogged = false;
+    isMessageRepliedByBot = true;
+
     ServicesBinding.instance.keyboard.addHandler(_onKey);
     indexSelected = 0;
     repoLoading = false;
     _gitcontroller.text = KeyConstants.gitToken;
     _openaicontroller.text = KeyConstants.openaiKey;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      userData = await _getUserData();
-      currentUser = userData.toString();
-      var repos = await _fetchRepos(currentUser);
-      final api = GitHubRagApi(UrlConstants.gcloudService);
-      setState(() {
-        reposLoaded = repos;
-        apiGitInstance = api;
-      });
-      await _initializeChatStream();
+    // WidgetsBinding.instance.addPostFrameCallback((_) async {});
+  }
+
+  Future<void> GetUserDataAndRepos(userdata) async {
+    //String? username = await _getUserData(userdata);
+    reposLoaded = await _fetchGitHubRepos();
+
+    //var repos = await _fetchRepos(username);
+    final api = GitHubRagApi(UrlConstants.gcloudService);
+    setState(() {
+      reposLoaded = true;
+      apiGitInstance = api;
     });
+    await _addMessageToFirebaseAndStream(selectedRepo);
   }
 
   bool _onKey(KeyEvent event) {
@@ -66,10 +95,14 @@ class _ChatScreenState extends State<ChatScreen> {
     return false;
   }
 
-  Future<void> _initializeChatStream() async {
+  Future<void> _addMessageToFirebaseAndStream(repoSelected) async {
+    var splittedRepo = repoSelected?.split('/');
+    var username = splittedRepo![0];
+    var repo = splittedRepo[1];
+
     _firestore
         .collection('conversations')
-        .doc('$currentUser-$selectedRepo')
+        .doc('$username-$repo')
         .collection('messages')
         .orderBy('timestamp', descending: true)
         .snapshots()
@@ -80,44 +113,53 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  //Used to randomly show the gif loading image.
+  String decideIndexingGifToShow() {
+    List<String> images = ["images/indexing.gif", "images/indexing2.gif"];
+    var rand = Random();
+    var numb = rand.nextInt(2);
+    return images.elementAt(numb);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 1,
-                child: _buildRepoList(),
-              ),
-              const SizedBox(width: 16),
-              selectedRepo == null
-                  ? Expanded(
-                      child: Positioned.fill(
-                      child: Opacity(
-                        opacity:
-                            0.8, // Ajusta la opacidad si quieres que la imagen sea más sutil
-                        child: Image.asset(
-                          'images/select_repo.png', // Ruta de la imagen en assets
-                          fit: BoxFit
-                              .fitHeight, // Hace que la imagen cubra todo el espacio
-                        ),
-                      ),
-                    ))
-                  : repoLoading == true
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: Expanded(
-                              child: CircularProgressIndicator.adaptive()))
-                      : Expanded(
-                          flex: 3,
-                          child: _buildChatArea(),
-                        ),
-            ],
+        child: Card(
+          elevation: 20.0,
+          color: AppColors.repoListCardBehind,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              //  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                SizedBox(
+                    width: MediaQuery.of(context).size.width / 4,
+                    child: _buildRepoList()),
+                const SizedBox(width: 16),
+                selectedRepo == null
+                    ? LoadingImage(
+                        isIndexingRepo: false,
+                        opacity: 1,
+                        size: 200,
+                        gifPath: decideIndexingGifToShow(),
+                      )
+                    : repoLoading == true
+                        ? LoadingImage(
+                            isIndexingRepo: true,
+                            size: 200,
+                            opacity: 1,
+                            gifPath: decideIndexingGifToShow(),
+                          )
+                        : Expanded(
+                            flex: 3,
+                            child: FirebaseAuth.instance.currentUser == null
+                                ? const SizedBox.shrink()
+                                : _buildChatArea(),
+                          ),
+              ],
+            ),
           ),
         ),
       ),
@@ -125,29 +167,31 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildChatArea() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            offset: const Offset(-3, -3),
-            blurRadius: 10,
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.7),
-            offset: const Offset(3, 3),
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          _buildChatHeader(),
-          Expanded(child: _buildMessageList()),
-          _buildMessageInput(),
-        ],
+    return Center(
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              offset: const Offset(-3, -3),
+              blurRadius: 10,
+            ),
+            BoxShadow(
+              color: Colors.white.withOpacity(0.7),
+              offset: const Offset(3, 3),
+              blurRadius: 10,
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            _buildChatHeader(context, notRelevantFiles, RelevantFiles),
+            Expanded(child: _buildMessageList()),
+            _buildMessageInput(),
+          ],
+        ),
       ),
     );
   }
@@ -155,81 +199,93 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildRepoList() {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            offset: const Offset(-3, -3),
-            blurRadius: 10,
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.7),
-            offset: const Offset(3, 3),
-            blurRadius: 10,
-          ),
-        ],
-      ),
+          color: AppColors.repoListCardBehind,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: []),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          IconButton(
-            onPressed: () => _showTokensDialog(context),
-            icon: const Icon(Icons.settings, color: AppColors.textPrimary),
+          GitHubLoginButton(
+            onUserData: (user) {
+              setState(() {
+                userData = user;
+                if (userData != null) {
+                  GetUserDataAndRepos(userData);
+                  isGitLogged = true;
+                  _controller.forward(); // Iniciar animación al loguearse
+                } else {
+                  //NO hay datos o ha hecho logout
+                  isGitLogged = false;
+                  userRepos = [];
+                }
+              });
+            },
           ),
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              'Repositorios',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-          Expanded(
-            child: reposLoaded == false
-                ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    itemCount: userRepos.length,
-                    itemBuilder: (context, index) {
-                      var isSelected = indexSelected == index;
-                      return ListTile(
-                        title: Text(
-                          userRepos[index],
-                          style: TextStyle(
-                            color: isSelected
-                                ? AppColors.textPrimary
-                                : AppColors.textSecondary,
+          isGitLogged == true
+              ? Expanded(
+                  child: Card(
+                    color: AppColors.repoList,
+                    shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(20.0))),
+                    elevation: 20.0,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(10.0),
+                      itemCount: userRepos.length,
+                      itemBuilder: (context, index) {
+                        var isSelected = indexSelected == index;
+                        return ListTile(
+                          shape: const RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(20.0))),
+                          tileColor: AppColors.repoList,
+                          subtitle: Text(userRepos[index]['visibility'],
+                              style: TextStyle(
+                                  color:
+                                      userRepos[index]['visibility'] == 'public'
+                                          ? Colors.blue
+                                          : Colors.red)),
+                          // leading: CircleAvatar(
+                          //     child:
+                          //         Text(userRepos[index].substring(0, 1).toUpperCase())),
+                          title: Text(
+                            userRepos[index]['name'],
+                            style: TextStyle(
+                                fontSize: TextSize.textRepoSize,
+                                color: isSelected
+                                    ? AppColors.textRepoListSelected
+                                    : const Color.fromARGB(255, 166, 169, 182)),
                           ),
-                        ),
-                        onTap: () async {
-                          setState(() {
-                            selectedRepo = userRepos[index];
-                            repoLoading = true;
-                            indexSelected = index;
-                            // Inicializar el repositorio
-                          });
+                          onTap: () async {
+                            setState(() {
+                              selectedRepo = userRepos[index]['name'];
+                              repoLoading = true;
+                              indexSelected = index;
+                              // Inicializar el repositorio
+                            });
 
-                          String? _instanceKeyGit =
-                              await apiGitInstance?.initializeRepo(
-                            githubToken: _gitcontroller.text,
-                            openaiKey: _openaicontroller.text,
-                            username: currentUser.toString(),
-                            repoName: selectedRepo.toString(),
-                          );
+                            Map<String, dynamic>? _instanceKeyGit =
+                                await apiGitInstance?.initializeRepo(
+                              githubToken: _gitcontroller.text,
+                              openaiKey: _openaicontroller.text,
+                              repoName: selectedRepo.toString(),
+                            );
 
-                          setState(() {
-                            instanceKeyGit = _instanceKeyGit;
-                            repoLoading = false;
-                          });
+                            setState(() {
+                              instanceKeyGit = _instanceKeyGit!['repo_name'];
+                              RelevantFiles = _instanceKeyGit['relevant'];
+                              notRelevantFiles =
+                                  _instanceKeyGit['not_relevant'];
+                              repoLoading = false;
+                            });
 
-                          await _initializeChatStream();
-                        },
-                      );
-                    },
+                            await _addMessageToFirebaseAndStream(selectedRepo);
+                          },
+                        );
+                      },
+                    ),
                   ),
-          ),
+                )
+              : const SizedBox.shrink(),
         ],
       ),
     );
@@ -311,19 +367,65 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildChatHeader() {
+  Widget _buildChatHeader(BuildContext context, List<dynamic> notRelevantFiles,
+      List<dynamic> RelevantFiles) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
         color: Colors.transparent,
       ),
-      child: Text(
-        selectedRepo.toString(),
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: AppColors.textPrimary,
-        ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Align(
+            alignment: Alignment.topLeft,
+            child: Text(
+              selectedRepo.toString(),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          RelevantFiles.isNotEmpty
+              ? IconButton(
+                  tooltip: 'Show files indexed',
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return RelevantFilesPopup(
+                          RelevantFiles:
+                              RelevantFiles, // Pasar la lista de archivos no relevantes
+                        );
+                      },
+                    );
+                  },
+                  icon: const Icon(
+                    Icons.info_outline,
+                    color: Colors.green,
+                  ))
+              : SizedBox.shrink(),
+          // Botón para mostrar el popup
+          notRelevantFiles.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.info_outline, color: Colors.red),
+                  tooltip: 'Show files not indexed',
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return NotRelevantFilesPopup(
+                          notRelevantFiles:
+                              notRelevantFiles, // Pasar la lista de archivos no relevantes
+                        );
+                      },
+                    );
+                  },
+                )
+              : const SizedBox.shrink(),
+        ],
       ),
     );
   }
@@ -331,24 +433,12 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildMessageInput() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.background,
-        borderRadius: const BorderRadius.only(
+        borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(20),
           bottomRight: Radius.circular(20),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            offset: const Offset(-3, -3),
-            blurRadius: 10,
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.7),
-            offset: const Offset(3, 3),
-            blurRadius: 10,
-          ),
-        ],
       ),
       child: Row(
         children: [
@@ -356,7 +446,7 @@ class _ChatScreenState extends State<ChatScreen> {
             child: TextFormField(
               controller: _messageController,
               decoration: const InputDecoration(
-                hintText: 'Escribe un mensaje...',
+                hintText: 'Ask me something...',
                 border: InputBorder.none,
               ),
             ),
@@ -371,14 +461,23 @@ class _ChatScreenState extends State<ChatScreen> {
                 // Do something
               }
             },
-            child: ElevatedButton(
-              onPressed: _sendMessage,
-              style: ElevatedButton.styleFrom(
-                shape: const CircleBorder(),
-                backgroundColor: AppColors.accent,
-              ),
-              child: const Icon(Icons.send, color: AppColors.background),
-            ),
+            child: isMessageRepliedByBot == true
+                ? ElevatedButton(
+                    onPressed: _sendMessage,
+                    style: ElevatedButton.styleFrom(
+                      // shape: BorderRadius.circular(20.0),
+                      backgroundColor: AppColors.accent,
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Icon(Icons.send,
+                          color: AppColors.textBubbleUserColor),
+                    ),
+                  )
+                : const CircularProgressIndicator(
+                    strokeWidth: 8.0,
+                    valueColor: AlwaysStoppedAnimation(Colors.amber),
+                  ),
           ),
         ],
       ),
@@ -387,43 +486,31 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildMessageList() {
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _chatStreamController.stream,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
+        stream: _chatStreamController.stream,
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: Text('No conversations'));
+          } else if (snapshot.hasData) {
+            List<Map<String, dynamic>> messages = snapshot.data!;
 
-        List<Map<String, dynamic>> messages = snapshot.data!;
-
-        return ListView.builder(
-          reverse: true,
-          itemCount: messages.length,
-          itemBuilder: (context, index) {
-            return _buildMessageBubble(messages[index]);
-          },
-        );
-      },
-    );
+            return ListView.builder(
+              reverse: true,
+              itemCount: messages.length,
+              itemBuilder: (context, index) {
+                return _buildMessageBubble(messages[index]);
+              },
+            );
+          } else {
+            return Center(child: Text('Error'));
+          }
+        });
   }
 
   Widget _buildMessageBubble(Map<String, dynamic> message) {
     bool isUser = message['role'] == 'user';
     return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isUser ? AppColors.accent : AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: Text(
-          message['text'],
-          style: TextStyle(
-            color: isUser ? AppColors.textPrimary : AppColors.textSecondary,
-          ),
-        ),
-      ),
+      alignment: isUser ? Alignment.bottomRight : Alignment.centerLeft,
+      child: CodeFormattedView(message['text'], isUser),
     );
   }
 
@@ -433,10 +520,18 @@ class _ChatScreenState extends State<ChatScreen> {
       String userMessage = _messageController.text;
       _messageController.clear();
 
+      setState(() {
+        isMessageRepliedByBot = false;
+      });
+
+      var splittedRepo = selectedRepo?.split('/');
+      var username = splittedRepo![0];
+      var repo = splittedRepo[1];
+
       // Add user message to Firestore
       await _firestore
           .collection('conversations')
-          .doc('$currentUser-$selectedRepo')
+          .doc('$username-$repo')
           .collection('messages')
           .add({
         'text': userMessage,
@@ -448,7 +543,6 @@ class _ChatScreenState extends State<ChatScreen> {
       try {
         // Hacer una pregunta
         final answer = await apiGitInstance?.askRepo(
-          username: currentUser.toString(),
           reponame: selectedRepo.toString(),
           question: userMessage,
         );
@@ -458,19 +552,23 @@ class _ChatScreenState extends State<ChatScreen> {
         // Add bot response to Firestore
         await _firestore
             .collection('conversations')
-            .doc('$currentUser-$selectedRepo')
+            .doc('$username-$repo')
             .collection('messages')
             .add({
           'text': answer,
           'role': 'bot',
           'timestamp': FieldValue.serverTimestamp(),
         });
+
+        setState(() {
+          isMessageRepliedByBot = true;
+        });
       } catch (e) {
         print('Error getting bot response: $e');
         // Optionally, add an error message to the chat
         await _firestore
             .collection('conversations')
-            .doc('$currentUser-$selectedRepo')
+            .doc('$username-$repo')
             .collection('messages')
             .add({
           'text': 'Error: Unable to get response from the bot.',
@@ -481,122 +579,46 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<dynamic> _getUserData() async {
-    // Datos para enviar en el cuerpo de la solicitud
-    Map<String, dynamic> bodyData = {"github": _gitcontroller.text};
-    var jsonBody = json.encode(bodyData);
-
-    // Encabezados de la solicitud
-    Map<String, String> headers = {
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-    };
-
-    var url = '${UrlConstants.gcloudService}/get-user-data-github/';
-
-    final response =
-        await http.post(Uri.parse(url), headers: headers, body: jsonBody);
-
-    if (response.statusCode == 200) {
-      // Si la respuesta es un objeto JSON (Map)
-      final Map<String, dynamic> jsonResponse = json.decode(response.body);
-
-      // Acceder directamente a las claves del objeto
-      var login =
-          jsonResponse['login']; // Por ejemplo, obteniendo el nombre de usuario
-      return login;
-    } else {
-      // Manejar el error en caso de que falle la solicitud
-
-      print('Error al obtener los repositorios: ${response.statusCode}');
-      return false;
-    }
-  }
-
-  Future<bool> _fetchRepos(user) async {
-    // Datos para enviar en el cuerpo de la solicitud
-    Map<String, dynamic> bodyData = {
-      "github": _gitcontroller.text,
-      "openai": KeyConstants.openaiKey,
-      "username": user,
-    };
-    var jsonBody = json.encode(bodyData);
-
-    // Encabezados de la solicitud
-    Map<String, String> headers = {
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-    };
-
-    var url = '${UrlConstants.gcloudService}/get-repos-user/';
-
-    final response =
-        await http.post(Uri.parse(url), headers: headers, body: jsonBody);
-
-    if (response.statusCode == 200) {
-      final List<dynamic> jsonResponse = json.decode(response.body);
-      setState(() {
-        userRepos = jsonResponse.map((repo) => repo['name'] as String).toList();
-      });
-
-      return true;
-    } else {
-      // Manejar el error en caso de que falle la solicitud
-
-      print('Error al obtener los repositorios: ${response.statusCode}');
-      return false;
-    }
-  }
-
-  Future<String> _sendMessageToLangChain(String message) async {
-    // URL del servidor
-    var url = Uri.parse('${UrlConstants.gcloudService}/ask-repo/');
-
-    // Token de autenticación (debe coincidir con el valor de `VALID_API_KEY` en el servidor)
-    String apiKey = '123';
-
-    // Encabezados de la solicitud
-    Map<String, String> headers = {
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-      "Authorization":
-          "Bearer $apiKey" // Agrega el token al encabezado Authorization
-    };
-
-    // Datos para enviar en el cuerpo de la solicitud
-    Map<String, dynamic> bodyData = {
-      "github": _gitcontroller.text,
-      "openai": _openaicontroller.text,
-      "username": currentUser,
-      "repo_name": selectedRepo,
-      "question": message
-    };
-
-    // Codifica el cuerpo como JSON
-    var jsonBody = json.encode(bodyData);
-
+  Future<bool> _fetchGitHubRepos() async {
     try {
-      // Envía la solicitud POST
-      var response = await http.post(
-        url,
-        headers: headers,
-        body: jsonBody,
+      // Autenticar con GitHub usando el proveedor de autenticación de Firebase
+      final githubProvider = GithubAuthProvider();
+      UserCredential userCredential =
+          await FirebaseAuth.instance.signInWithPopup(githubProvider);
+
+      // Obtener el GitHub access token del objeto OAuthCredential
+      final OAuthCredential? credential =
+          userCredential.credential as OAuthCredential?;
+      String? accessToken = credential?.accessToken;
+
+      if (accessToken == null) {
+        return false;
+      }
+
+      // Hacer la solicitud a la API de GitHub con el access token de GitHub
+      final response = await http.get(
+        Uri.parse('https://api.github.com/user/repos'),
+        headers: {
+          'Authorization': 'token $accessToken',
+        },
       );
 
-      // Maneja la respuesta
       if (response.statusCode == 200) {
-        return response.body.toString();
+        final List<dynamic> jsonResponse = json.decode(response.body);
+        setState(() {
+          userRepos = jsonResponse
+              .map((repo) =>
+                  {'visibility': repo['visibility'], 'name': repo['full_name']})
+              .toList();
+        });
+
+        return true;
       } else {
-        print('Server responded with status code: ${response.statusCode}');
-        print('Response body: ${response.body}');
-        throw Exception('Failed to load data: ${response.statusCode}');
+        return false;
       }
     } catch (e) {
-      print('Error occurred: $e');
-      if (e is http.ClientException) {
-        print('ClientException details: ${e.message}');
-      }
-      rethrow;
+      print('Error en la autenticación con GitHub o la solicitud: $e');
+      return false;
     }
   }
 
