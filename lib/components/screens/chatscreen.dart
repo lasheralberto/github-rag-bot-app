@@ -37,12 +37,10 @@ class _ChatScreenState extends State<ChatScreen>
   final StreamController<List<Map<String, dynamic>>> _chatStreamController =
       StreamController<List<Map<String, dynamic>>>.broadcast();
   var focusNode = FocusNode();
-
   String? currentUser;
   String? selectedRepo;
   List<Map<String, dynamic>> userRepos = [];
   bool? reposLoaded = false;
-
   int? indexSelected;
   GitHubRagApi? apiGitInstance;
   String? instanceKeyGit;
@@ -52,7 +50,6 @@ class _ChatScreenState extends State<ChatScreen>
   bool? isMessageRepliedByBot;
   late List<dynamic> notRelevantFiles;
   late List<dynamic> RelevantFiles;
-
   late AnimationController _controller;
   late Animation<double> _animation;
 
