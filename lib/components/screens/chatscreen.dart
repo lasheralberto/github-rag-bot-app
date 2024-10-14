@@ -21,8 +21,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-
-
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -98,20 +96,22 @@ class _ChatScreenState extends State<ChatScreen>
 
   Future<void> _addMessageToFirebaseAndStream(repoSelected) async {
     var splittedRepo = repoSelected?.split('/');
-    var username = splittedRepo![0];
-    var repo = splittedRepo[1];
+    if (splittedRepo != null && splittedRepo.length > 1) {
+      var username = splittedRepo[0];
+      var repo = splittedRepo[1];
 
-    _firestore
-        .collection('conversations')
-        .doc('$username-$repo')
-        .collection('messages')
-        .orderBy('timestamp', descending: true)
-        .snapshots()
-        .listen((snapshot) {
-      List<Map<String, dynamic>> messages =
-          snapshot.docs.map((doc) => doc.data()).toList();
-      _chatStreamController.add(messages);
-    });
+      _firestore
+          .collection('conversations')
+          .doc('$username-$repo')
+          .collection('messages')
+          .orderBy('timestamp', descending: true)
+          .snapshots()
+          .listen((snapshot) {
+        List<Map<String, dynamic>> messages =
+            snapshot.docs.map((doc) => doc.data()).toList();
+        _chatStreamController.add(messages);
+      });
+    }
   }
 
   //Used to randomly show the gif loading image.
@@ -272,11 +272,15 @@ class _ChatScreenState extends State<ChatScreen>
                             );
 
                             setState(() {
-                              instanceKeyGit = _instanceKeyGit!['repo_name'];
-                              RelevantFiles = _instanceKeyGit['relevant'];
-                              notRelevantFiles =
-                                  _instanceKeyGit['not_relevant'];
-                              repoLoading = false;
+                              if (_instanceKeyGit != null &&
+                                  _instanceKeyGit.containsKey('repo_name')) {
+                                instanceKeyGit = _instanceKeyGit['repo_name'];
+
+                                RelevantFiles = _instanceKeyGit['relevant'];
+                                notRelevantFiles =
+                                    _instanceKeyGit['not_relevant'];
+                                repoLoading = false;
+                              }
                             });
 
                             await _addMessageToFirebaseAndStream(selectedRepo);
