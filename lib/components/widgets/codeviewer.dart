@@ -47,9 +47,9 @@ class CodeFormattedView extends StatelessWidget {
                 children: [
                   isUserOrAgentMessage == false
                       ? const CircleAvatar(
-                          radius: 20.0,
+                          radius: 18.0,
                           backgroundColor: Colors.white,
-                          foregroundImage: AssetImage('images/logo_chat.png'),
+                          foregroundImage: AssetImage('images/logo.png'),
                         )
                       : CircleAvatar(
                           radius: 15.0,

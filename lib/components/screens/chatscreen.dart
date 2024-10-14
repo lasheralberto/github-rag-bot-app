@@ -19,6 +19,7 @@ import 'package:githubrag/models/text.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -58,6 +59,7 @@ class _ChatScreenState extends State<ChatScreen>
   @override
   void initState() {
     super.initState();
+
     RelevantFiles = [];
     notRelevantFiles = [];
     isGitLogged = false;
@@ -66,10 +68,10 @@ class _ChatScreenState extends State<ChatScreen>
     ServicesBinding.instance.keyboard.addHandler(_onKey);
     indexSelected = 0;
     repoLoading = false;
-    _gitcontroller.text = KeyConstants.gitToken;
-    _openaicontroller.text = KeyConstants.openaiKey;
+    _gitcontroller.text = dotenv.env['gittoken'].toString();
+    _openaicontroller.text = dotenv.env['openaikey'].toString();
 
-    // WidgetsBinding.instance.addPostFrameCallback((_) async {});
+    WidgetsBinding.instance.addPostFrameCallback((_) async {});
   }
 
   Future<void> GetUserDataAndRepos(userdata) async {

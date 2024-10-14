@@ -42,6 +42,7 @@ dependencies:
   uni_links: ^0.5.0
   font_awesome_flutter: ^10.7.0
   flutter_code_editor: ^0.3.2
+  flutter_dotenv: ^5.2.1
 
 
   
@@ -79,6 +80,7 @@ flutter:
     - assets/images/indexing.gif
     - assets/images/indexing2.gif
     - assets/images/logo.png
+    - .env
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
