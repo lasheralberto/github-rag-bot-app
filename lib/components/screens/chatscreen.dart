@@ -262,8 +262,7 @@ class _ChatScreenState extends State<ChatScreen>
                               repoLoading = true;
                               indexSelected = index;
                               // Inicializar el repositorio
-                            });   
-
+                            });
                             Map<String, dynamic>? _instanceKeyGit =
                                 await apiGitInstance?.initializeRepo(
                               githubToken: _gitcontroller.text,
