@@ -48,10 +48,10 @@ class _ChatScreenState extends State<ChatScreen>
   User? userData;
   bool? isGitLogged;
   bool? isMessageRepliedByBot;
-  late List<dynamic> notRelevantFiles;
-  late List<dynamic> RelevantFiles;
-  late AnimationController _controller;
-  late Animation<double> _animation;
+   List<dynamic>? notRelevantFiles;
+   List<dynamic>? RelevantFiles;
+   AnimationController? _controller;
+
 
   @override
   void initState() {
@@ -188,7 +188,7 @@ class _ChatScreenState extends State<ChatScreen>
         ),
         child: Column(
           children: [
-            _buildChatHeader(context, notRelevantFiles, RelevantFiles),
+            _buildChatHeader(context, notRelevantFiles!, RelevantFiles!),
             Expanded(child: _buildMessageList()),
             _buildMessageInput(),
           ],
@@ -213,7 +213,7 @@ class _ChatScreenState extends State<ChatScreen>
                 if (userData != null) {
                   GetUserDataAndRepos(userData);
                   isGitLogged = true;
-                  _controller.forward(); // Iniciar animación al loguearse
+                  _controller?.forward(); // Iniciar animación al loguearse
                 } else {
                   //NO hay datos o ha hecho logout
                   isGitLogged = false;
