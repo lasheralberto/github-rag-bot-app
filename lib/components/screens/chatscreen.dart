@@ -115,7 +115,7 @@ class _ChatScreenState extends State<ChatScreen>
 
   //Used to randomly show the gif loading image.
   String decideIndexingGifToShow() {
-    List<String> images = ["media/indexing.gif", "media/indexing2.gif"];
+    List<String> images = ["media/images/indexing.gif", "media/images/indexing2.gif"];
     var rand = Random();
     var numb = rand.nextInt(2);
     return images.elementAt(numb);
