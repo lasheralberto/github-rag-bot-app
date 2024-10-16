@@ -49,7 +49,7 @@ class CodeFormattedView extends StatelessWidget {
                       ? const CircleAvatar(
                           radius: 18.0,
                           backgroundColor: Colors.white,
-                          foregroundImage: AssetImage('images/logo.png'),
+                          foregroundImage: AssetImage('media/images/logo.png'),
                         )
                       : CircleAvatar(
                           radius: 15.0,
