@@ -66,8 +66,17 @@ class _ChatScreenState extends State<ChatScreen>
     repoLoading = false;
     _gitcontroller.text = dotenv.env['gittoken'].toString();
     _openaicontroller.text = dotenv.env['openaikey'].toString();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {});
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        await GetUserDataAndRepos(currentUser);
+      }
+    });
   }
 
   Future<void> GetUserDataAndRepos(userdata) async {
@@ -115,7 +124,10 @@ class _ChatScreenState extends State<ChatScreen>
 
   //Used to randomly show the gif loading image.
   String decideIndexingGifToShow() {
-    List<String> images = ["media/images/indexing.gif", "media/images/indexing2.gif"];
+    List<String> images = [
+      "media/images/indexing.gif",
+      "media/images/indexing2.gif"
+    ];
     var rand = Random();
     var numb = rand.nextInt(2);
     return images.elementAt(numb);
