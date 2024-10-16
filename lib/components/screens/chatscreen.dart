@@ -284,12 +284,24 @@ class _ChatScreenState extends State<ChatScreen>
                             setState(() {
                               if (_instanceKeyGit != null &&
                                   _instanceKeyGit.containsKey('repo_name')) {
-                                instanceKeyGit = _instanceKeyGit['repo_name'];
+                                var typeResponse = _instanceKeyGit['repo_name'];
+                                switch (typeResponse.runtimeType) {
+                                  case int:
+                                    repoLoading = false;
+                                    showModalBottomSheet(
+                                        context: context,
+                                        builder: (c) {
+                                          return Text('Error');
+                                        });
+                                  case String:
+                                    instanceKeyGit =
+                                        _instanceKeyGit['repo_name'];
 
-                                RelevantFiles = _instanceKeyGit['relevant'];
-                                notRelevantFiles =
-                                    _instanceKeyGit['not_relevant'];
-                                repoLoading = false;
+                                    RelevantFiles = _instanceKeyGit['relevant'];
+                                    notRelevantFiles =
+                                        _instanceKeyGit['not_relevant'];
+                                    repoLoading = false;
+                                }
                               }
                             });
 
