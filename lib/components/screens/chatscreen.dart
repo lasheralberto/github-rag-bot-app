@@ -48,10 +48,9 @@ class _ChatScreenState extends State<ChatScreen>
   User? userData;
   bool? isGitLogged;
   bool? isMessageRepliedByBot;
-   List<dynamic>? notRelevantFiles;
-   List<dynamic>? RelevantFiles;
-   AnimationController? _controller;
-
+  List<dynamic>? notRelevantFiles;
+  List<dynamic>? RelevantFiles;
+  AnimationController? _controller;
 
   @override
   void initState() {
@@ -116,7 +115,7 @@ class _ChatScreenState extends State<ChatScreen>
 
   //Used to randomly show the gif loading image.
   String decideIndexingGifToShow() {
-    List<String> images = ["images/indexing.gif", "images/indexing2.gif"];
+    List<String> images = ["media/indexing.gif", "media/indexing2.gif"];
     var rand = Random();
     var numb = rand.nextInt(2);
     return images.elementAt(numb);
