@@ -104,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen>
                           SizedBox(
                               height: 100,
                               width: 100,
-                              child: Image.asset('media/logo.png')),
+                              child: Image.asset('media/images/logo.png')),
                           const Text(
                             "RAG-iT",
                             style: TextStyle(
