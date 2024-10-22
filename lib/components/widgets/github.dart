@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:githubrag/components/screens/chatscreen.dart';
 import 'package:githubrag/components/screens/login.dart';
 import 'package:githubrag/constants/keys.dart';
 import 'package:http/http.dart' as http;
@@ -46,6 +47,11 @@ class _GitHubLoginButtonState extends State<GitHubLoginButton> {
         _user = userCredential.user;
         widget.onUserData(_user!);
       });
+
+      Navigator.push(context, MaterialPageRoute(builder: (context) {
+        return const ChatScreen();
+      }));
+
       return _user;
     } catch (e) {
       if (e is FirebaseAuthException) {

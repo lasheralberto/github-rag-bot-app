@@ -43,6 +43,7 @@ dependencies:
   font_awesome_flutter: ^10.7.0
   flutter_code_editor: ^0.3.2
   flutter_dotenv: ^5.2.1
+  flutter_animate: ^4.5.0
 
 
   

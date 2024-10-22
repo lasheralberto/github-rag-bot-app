@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:githubrag/components/widgets/codeviewer.dart';
+import 'package:githubrag/components/widgets/generalPopUp.dart';
 import 'package:githubrag/components/widgets/loadinggif.dart';
 import 'package:githubrag/components/widgets/loadingindicator.dart';
 import 'package:githubrag/components/widgets/notrelevantfiles.dart';
@@ -51,6 +52,7 @@ class _ChatScreenState extends State<ChatScreen>
   List<dynamic>? notRelevantFiles;
   List<dynamic>? RelevantFiles;
   AnimationController? _controller;
+  String? pineconeKey;
 
   @override
   void initState() {
@@ -66,6 +68,8 @@ class _ChatScreenState extends State<ChatScreen>
     repoLoading = false;
     _gitcontroller.text = dotenv.env['gittoken'].toString();
     _openaicontroller.text = dotenv.env['openaikey'].toString();
+    pineconeKey = dotenv.env['pineconekey'].toString();
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -276,31 +280,35 @@ class _ChatScreenState extends State<ChatScreen>
                             });
                             Map<String, dynamic>? _instanceKeyGit =
                                 await apiGitInstance?.initializeRepo(
-                              githubToken: _gitcontroller.text,
-                              openaiKey: _openaicontroller.text,
-                              repoName: selectedRepo.toString(),
-                            );
+                                    githubToken: _gitcontroller.text,
+                                    openaiKey: _openaicontroller.text,
+                                    repoName: selectedRepo.toString(),
+                                    pineconeKey: pineconeKey.toString());
 
                             setState(() {
                               if (_instanceKeyGit != null &&
                                   _instanceKeyGit.containsKey('repo_name')) {
-                                var typeResponse = _instanceKeyGit['repo_name'];
-                                switch (typeResponse.runtimeType) {
-                                  case int:
-                                    repoLoading = false;
-                                    showModalBottomSheet(
-                                        context: context,
-                                        builder: (c) {
-                                          return Text('Error');
-                                        });
-                                  case String:
-                                    instanceKeyGit =
-                                        _instanceKeyGit['repo_name'];
+                                var repoName = _instanceKeyGit['repo_name'];
+                                var loggers = _instanceKeyGit['messages'];
+                                if (repoName.isEmpty) {
+                                  repoLoading = false;
+                                  loggers.toString().isNotEmpty
+                                      ? showDialog(
+                                          context: context,
+                                          builder: (context) {
+                                            return Generalpopup(
+                                                text:
+                                                    _instanceKeyGit['messages'],
+                                                title: 'Error');
+                                          })
+                                      : SizedBox.shrink();
+                                } else {
+                                  instanceKeyGit = _instanceKeyGit['repo_name'];
 
-                                    RelevantFiles = _instanceKeyGit['relevant'];
-                                    notRelevantFiles =
-                                        _instanceKeyGit['not_relevant'];
-                                    repoLoading = false;
+                                  RelevantFiles = _instanceKeyGit['relevant'];
+                                  notRelevantFiles =
+                                      _instanceKeyGit['not_relevant'];
+                                  repoLoading = false;
                                 }
                               }
                             });
@@ -315,61 +323,6 @@ class _ChatScreenState extends State<ChatScreen>
               : const SizedBox.shrink(),
         ],
       ),
-    );
-  }
-
-  void _showTokensDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          backgroundColor: Colors.transparent,
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Configuración de Tokens',
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildTextField(_openaicontroller, 'OpenAI Key'),
-                const SizedBox(height: 16),
-                _buildTextField(_gitcontroller, 'Github token'),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      backgroundColor: AppColors.cardBackground,
-                    ),
-                    child: const Text(
-                      'Cerrar',
-                      style: TextStyle(color: AppColors.background),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -570,9 +523,10 @@ class _ChatScreenState extends State<ChatScreen>
       try {
         // Hacer una pregunta
         final answer = await apiGitInstance?.askRepo(
-          reponame: selectedRepo.toString(),
-          question: userMessage,
-        );
+            reponame: selectedRepo.toString(),
+            question: userMessage,
+            openaiKey: _openaicontroller.text,
+            pineconeKey: pineconeKey.toString());
 
         //var botResponse = await _sendMessageToLangChain(userMessage);
 
@@ -592,6 +546,9 @@ class _ChatScreenState extends State<ChatScreen>
         });
       } catch (e) {
         print('Error getting bot response: $e');
+        setState(() {
+          isMessageRepliedByBot = true;
+        });
         // Optionally, add an error message to the chat
         await _firestore
             .collection('conversations')

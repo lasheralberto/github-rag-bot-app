@@ -42,8 +42,10 @@ class MyApp extends StatelessWidget {
           scaffoldBackgroundColor: AppColors.background,
           visualDensity: VisualDensity.adaptivePlatformDensity,
         ),
-        home: FirebaseAuth.instance.currentUser == null
-            ? LoginScreen()
-            : ChatScreen());
+        home:
+            //FirebaseAuth.instance.currentUser == null
+            LoginScreen()
+        // : ChatScreen()
+        );
   }
 }
