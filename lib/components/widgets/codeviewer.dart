@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:githubrag/models/colors.dart';
+import 'package:githubrag/models/styles.dart';
 import 'package:githubrag/models/text.dart';
 
 class CodeFormattedView extends StatelessWidget {
@@ -39,7 +40,7 @@ class CodeFormattedView extends StatelessWidget {
                 color: isUserOrAgentMessage == true
                     ? AppColors.textUserBubble
                     : Colors.transparent,
-                borderRadius: BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(WidgetStyle.borderRadius),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.start,

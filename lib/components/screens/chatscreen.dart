@@ -4,11 +4,13 @@ import 'dart:math';
 //import 'package:appwrite/appwrite.dart' as appw;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
+import 'package:githubrag/components/widgets/animatedlogo.dart';
 import 'package:githubrag/components/widgets/codeviewer.dart';
 import 'package:githubrag/components/widgets/generalPopUp.dart';
 import 'package:githubrag/components/widgets/loadinggif.dart';
 import 'package:githubrag/components/widgets/loadingindicator.dart';
 import 'package:githubrag/components/widgets/notrelevantfiles.dart';
+import 'package:githubrag/components/widgets/openaibut.dart';
 import 'package:githubrag/components/widgets/relevantfiles.dart';
 import 'package:githubrag/constants/keys.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -16,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:githubrag/models/colors.dart';
 import 'package:githubrag/models/gitbackend.dart';
 import 'package:githubrag/components/widgets/github.dart';
+import 'package:githubrag/models/styles.dart';
 import 'package:githubrag/models/text.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
@@ -67,7 +70,7 @@ class _ChatScreenState extends State<ChatScreen>
     indexSelected = 0;
     repoLoading = false;
     _gitcontroller.text = dotenv.env['gittoken'].toString();
-    _openaicontroller.text = dotenv.env['openaikey'].toString();
+    _openaicontroller.text = "";
     pineconeKey = dotenv.env['pineconekey'].toString();
 
     _controller = AnimationController(
@@ -126,17 +129,6 @@ class _ChatScreenState extends State<ChatScreen>
     }
   }
 
-  //Used to randomly show the gif loading image.
-  String decideIndexingGifToShow() {
-    List<String> images = [
-      "media/images/indexing.gif",
-      "media/images/indexing2.gif"
-    ];
-    var rand = Random();
-    var numb = rand.nextInt(2);
-    return images.elementAt(numb);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -148,32 +140,42 @@ class _ChatScreenState extends State<ChatScreen>
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
-              //  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment
+                  .start, // Alinear el contenido verticalmente en la parte superior
               children: [
+                // Panel de la lista de repositorios alineado a la izquierda
                 SizedBox(
-                    width: MediaQuery.of(context).size.width / 4,
-                    child: _buildRepoList()),
-                const SizedBox(width: 16),
-                selectedRepo == null
-                    ? LoadingImage(
-                        isIndexingRepo: false,
-                        opacity: 1,
-                        size: 200,
-                        gifPath: decideIndexingGifToShow(),
-                      )
-                    : repoLoading == true
-                        ? LoadingImage(
-                            isIndexingRepo: true,
-                            size: 200,
-                            opacity: 1,
-                            gifPath: decideIndexingGifToShow(),
-                          )
-                        : Expanded(
-                            flex: 3,
-                            child: FirebaseAuth.instance.currentUser == null
-                                ? const SizedBox.shrink()
-                                : _buildChatArea(),
+                  width: MediaQuery.of(context).size.width /
+                      4, // Ocupa 1/4 del ancho de la pantalla
+                  child: _buildRepoList(),
+                ),
+                const SizedBox(
+                    width:
+                        16), // Espacio entre la lista de repos y el contenido principal
+
+                // El área central (logo animado o área de chat)
+                Expanded(
+                  flex: 3, // El contenido central ocupará más espacio
+                  child: selectedRepo == null
+                      ? Center(
+                          // Centra el logo en la pantalla
+                          child: AnimatedLogoText(
+                            indexing: false,
                           ),
+                        )
+                      : repoLoading == true
+                          ? Center(
+                              // También centrado mientras carga el repositorio
+                              child: AnimatedLogoText(
+                                indexing: true,
+                              ),
+                            )
+                          : FirebaseAuth.instance.currentUser == null
+                              ? const SizedBox
+                                  .shrink() // Ocultar si no hay usuario
+                              : _buildChatArea(
+                                  indexSelected), // Muestra el área de chat si el repositorio está seleccionado
+                ),
               ],
             ),
           ),
@@ -182,28 +184,32 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
-  Widget _buildChatArea() {
+  Widget _buildChatArea(index) {
     return Center(
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.background,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(WidgetStyle.borderRadius),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              offset: const Offset(-3, -3),
-              blurRadius: 10,
-            ),
-            BoxShadow(
-              color: Colors.white.withOpacity(0.7),
-              offset: const Offset(3, 3),
-              blurRadius: 10,
-            ),
+            // BoxShadow(
+            //   color: Colors.black.withOpacity(0.1),
+            //   offset: const Offset(-3, -3),
+            //   blurRadius: 10,
+            // ),
+            // BoxShadow(
+            //   color: Colors.white.withOpacity(0.7),
+            //   offset: const Offset(3, 3),
+            //   blurRadius: 10,
+            // ),
           ],
         ),
         child: Column(
           children: [
-            _buildChatHeader(context, notRelevantFiles!, RelevantFiles!),
+            if (RelevantFiles == null || notRelevantFiles == null)
+              _buildChatHeader(context, [], [], index, selectedRepo)
+            else
+              _buildChatHeader(context, notRelevantFiles!, RelevantFiles!,
+                  index, selectedRepo),
             Expanded(child: _buildMessageList()),
             _buildMessageInput(),
           ],
@@ -215,34 +221,53 @@ class _ChatScreenState extends State<ChatScreen>
   Widget _buildRepoList() {
     return Container(
       decoration: BoxDecoration(
-          color: AppColors.repoListCardBehind,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: []),
+        color: AppColors.repoListCardBehind,
+        borderRadius: BorderRadius.circular(WidgetStyle.borderRadius),
+      ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          GitHubLoginButton(
-            onUserData: (user) {
-              setState(() {
-                userData = user;
-                if (userData != null) {
-                  GetUserDataAndRepos(userData);
-                  isGitLogged = true;
-                  _controller?.forward(); // Iniciar animación al loguearse
-                } else {
-                  //NO hay datos o ha hecho logout
-                  isGitLogged = false;
-                  userRepos = [];
-                }
-              });
-            },
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              OpenAiButton(
+                apikey: _openaicontroller.text,
+                onApiKeyEntered: (p0) {
+                  setState(() {
+                    _openaicontroller.text = p0;
+                  });
+                },
+              ),
+              const SizedBox(
+                width: 20,
+              ),
+              GitHubLoginButton(
+                onUserData: (user) {
+                  setState(() {
+                    userData = user;
+                    if (userData != null) {
+                      GetUserDataAndRepos(userData);
+                      isGitLogged = true;
+                      _controller?.forward(); // Iniciar animación al loguearse
+                    } else {
+                      //NO hay datos o ha hecho logout
+                      isGitLogged = false;
+                      userRepos = [];
+                    }
+                  });
+                },
+              ),
+            ],
           ),
           isGitLogged == true
               ? Expanded(
                   child: Card(
                     color: AppColors.repoList,
                     shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(20.0))),
+                        borderRadius: BorderRadius.all(
+                            Radius.circular(WidgetStyle.borderRadius))),
                     elevation: 20.0,
                     child: ListView.builder(
                       padding: const EdgeInsets.all(10.0),
@@ -251,8 +276,8 @@ class _ChatScreenState extends State<ChatScreen>
                         var isSelected = indexSelected == index;
                         return ListTile(
                           shape: const RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(20.0))),
+                              borderRadius: BorderRadius.all(
+                                  Radius.circular(WidgetStyle.borderRadius))),
                           tileColor: AppColors.repoList,
                           subtitle: Text(userRepos[index]['visibility'],
                               style: TextStyle(
@@ -267,52 +292,12 @@ class _ChatScreenState extends State<ChatScreen>
                             userRepos[index]['name'],
                             style: TextStyle(
                                 fontSize: TextSize.textRepoSize,
-                                color: isSelected
+                                color: (isSelected && indexSelected != 0)
                                     ? AppColors.textRepoListSelected
                                     : const Color.fromARGB(255, 166, 169, 182)),
                           ),
                           onTap: () async {
-                            setState(() {
-                              selectedRepo = userRepos[index]['name'];
-                              repoLoading = true;
-                              indexSelected = index;
-                              // Inicializar el repositorio
-                            });
-                            Map<String, dynamic>? _instanceKeyGit =
-                                await apiGitInstance?.initializeRepo(
-                                    githubToken: _gitcontroller.text,
-                                    openaiKey: _openaicontroller.text,
-                                    repoName: selectedRepo.toString(),
-                                    pineconeKey: pineconeKey.toString());
-
-                            setState(() {
-                              if (_instanceKeyGit != null &&
-                                  _instanceKeyGit.containsKey('repo_name')) {
-                                var repoName = _instanceKeyGit['repo_name'];
-                                var loggers = _instanceKeyGit['messages'];
-                                if (repoName.isEmpty) {
-                                  repoLoading = false;
-                                  loggers.toString().isNotEmpty
-                                      ? showDialog(
-                                          context: context,
-                                          builder: (context) {
-                                            return Generalpopup(
-                                                text:
-                                                    _instanceKeyGit['messages'],
-                                                title: 'Error');
-                                          })
-                                      : SizedBox.shrink();
-                                } else {
-                                  instanceKeyGit = _instanceKeyGit['repo_name'];
-
-                                  RelevantFiles = _instanceKeyGit['relevant'];
-                                  notRelevantFiles =
-                                      _instanceKeyGit['not_relevant'];
-                                  repoLoading = false;
-                                }
-                              }
-                            });
-
+                            await initializerepoAndSetState(index);
                             await _addMessageToFirebaseAndStream(selectedRepo);
                           },
                         );
@@ -332,7 +317,7 @@ class _ChatScreenState extends State<ChatScreen>
       height: MediaQuery.of(context).size.height / 5,
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(WidgetStyle.borderRadius),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: TextFormField(
@@ -348,63 +333,76 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   Widget _buildChatHeader(BuildContext context, List<dynamic> notRelevantFiles,
-      List<dynamic> RelevantFiles) {
+      List<dynamic> RelevantFiles, index, reposelected) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
         color: Colors.transparent,
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Align(
-            alignment: Alignment.topLeft,
-            child: Text(
-              selectedRepo.toString(),
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
+          IconButton(
+            onPressed: () async {
+              await initializerepoAndSetState(index);
+              await _addMessageToFirebaseAndStream(reposelected);
+            },
+            icon: const Icon(Icons.refresh_sharp),
+            tooltip: 'Re-index repository',
           ),
-          RelevantFiles.isNotEmpty
-              ? IconButton(
-                  tooltip: 'Show files indexed',
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return RelevantFilesPopup(
-                          RelevantFiles:
-                              RelevantFiles, // Pasar la lista de archivos no relevantes
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Align(
+                alignment: Alignment.topLeft,
+                child: Text(
+                  selectedRepo.toString(),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              RelevantFiles.isNotEmpty
+                  ? IconButton(
+                      tooltip: 'Show files indexed',
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return RelevantFilesPopup(
+                              RelevantFiles:
+                                  RelevantFiles, // Pasar la lista de archivos no relevantes
+                            );
+                          },
                         );
                       },
-                    );
-                  },
-                  icon: const Icon(
-                    Icons.info_outline,
-                    color: Colors.green,
-                  ))
-              : SizedBox.shrink(),
-          // Botón para mostrar el popup
-          notRelevantFiles.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.info_outline, color: Colors.red),
-                  tooltip: 'Show files not indexed',
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return NotRelevantFilesPopup(
-                          notRelevantFiles:
-                              notRelevantFiles, // Pasar la lista de archivos no relevantes
+                      icon: const Icon(
+                        Icons.info_outline,
+                        color: Colors.green,
+                      ))
+                  : const SizedBox.shrink(),
+              // Botón para mostrar el popup
+              notRelevantFiles.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.info_outline, color: Colors.red),
+                      tooltip: 'Show files not indexed',
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return NotRelevantFilesPopup(
+                              notRelevantFiles:
+                                  notRelevantFiles, // Pasar la lista de archivos no relevantes
+                            );
+                          },
                         );
                       },
-                    );
-                  },
-                )
-              : const SizedBox.shrink(),
+                    )
+                  : const SizedBox.shrink(),
+            ],
+          ),
         ],
       ),
     );
@@ -416,8 +414,8 @@ class _ChatScreenState extends State<ChatScreen>
       decoration: const BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
+          bottomLeft: Radius.circular(WidgetStyle.borderRadius),
+          bottomRight: Radius.circular(WidgetStyle.borderRadius),
         ),
       ),
       child: Row(
@@ -444,9 +442,15 @@ class _ChatScreenState extends State<ChatScreen>
             child: isMessageRepliedByBot == true
                 ? ElevatedButton(
                     onPressed: _sendMessage,
-                    style: ElevatedButton.styleFrom(
-                      // shape: BorderRadius.circular(20.0),
-                      backgroundColor: AppColors.accent,
+                    style: ButtonStyle(
+                      backgroundColor:
+                          WidgetStateProperty.all<Color>(AppColors.accent),
+                      shape: WidgetStateProperty.all<RoundedRectangleBorder>(
+                        RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(WidgetStyle.borderRadius),
+                        ),
+                      ),
                     ),
                     child: const Padding(
                       padding: EdgeInsets.all(8.0),
@@ -481,7 +485,7 @@ class _ChatScreenState extends State<ChatScreen>
               },
             );
           } else {
-            return Center(child: Text('Error'));
+            return const Center(child: Text('Error'));
           }
         });
   }
@@ -561,6 +565,45 @@ class _ChatScreenState extends State<ChatScreen>
         });
       }
     }
+  }
+
+  Future<void> initializerepoAndSetState(index) async {
+    setState(() {
+      selectedRepo = userRepos[index]['name'];
+      repoLoading = true;
+      indexSelected = index;
+      // Inicializar el repositorio
+    });
+    Map<String, dynamic>? _instanceKeyGit =
+        await apiGitInstance?.initializeRepo(
+            githubToken: _gitcontroller.text,
+            openaiKey: _openaicontroller.text,
+            repoName: selectedRepo.toString(),
+            pineconeKey: pineconeKey.toString());
+
+    setState(() {
+      if (_instanceKeyGit != null && _instanceKeyGit.containsKey('repo_name')) {
+        var repoName = _instanceKeyGit['repo_name'];
+        var loggers = _instanceKeyGit['messages'];
+        if (repoName.isEmpty) {
+          repoLoading = false;
+          loggers.toString().isNotEmpty
+              ? showDialog(
+                  context: context,
+                  builder: (context) {
+                    return Generalpopup(
+                        text: _instanceKeyGit['messages'], title: 'Error');
+                  })
+              : const SizedBox.shrink();
+        } else {
+          instanceKeyGit = _instanceKeyGit['repo_name'];
+
+          RelevantFiles = _instanceKeyGit['relevant'];
+          notRelevantFiles = _instanceKeyGit['not_relevant'];
+          repoLoading = false;
+        }
+      }
+    });
   }
 
   Future<bool> _fetchGitHubRepos() async {

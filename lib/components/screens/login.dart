@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:githubrag/components/screens/chatscreen.dart';
+import 'package:githubrag/components/widgets/animatedlogo.dart';
 import 'package:githubrag/components/widgets/github.dart';
 import 'package:githubrag/models/colors.dart';
 
@@ -72,56 +73,8 @@ class _LoginScreenState extends State<LoginScreen>
                   crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    AnimatedBuilder(
-                      animation: _controller,
-                      builder: (context, child) {
-                        return ShaderMask(
-                          shaderCallback: (rect) {
-                            return LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Colors.blueAccent,
-                                Colors.greenAccent,
-                                Colors.purpleAccent,
-                              ],
-                              stops: [
-                                _controller.value - 0.3,
-                                _controller.value,
-                                _controller.value + 0.3,
-                              ],
-                            ).createShader(rect);
-                          },
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                  height: 100,
-                                  width: 100,
-                                  child: Image.asset('media/images/logo.png')),
-                              const Text(
-                                "RAG-iT",
-                                style: TextStyle(
-                                  fontSize: 80,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              )
-                                  .animate(
-                                    delay: 1
-                                        .seconds, // this delay only happens once at the very start
-                                    onPlay: (controller) =>
-                                        controller.repeat(), // loop
-                                  )
-                                  .shader(duration: 5.seconds)
-                                  .fadeOut(
-                                      duration: 100000
-                                          .seconds) // this delay happens at the start of each loop,
-                            ],
-                          ),
-                        );
-                      },
+                    AnimatedLogoText(
+                      indexing: false,
                     ),
                     const SizedBox(height: 20),
                     FadeTransition(

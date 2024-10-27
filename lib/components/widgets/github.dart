@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:githubrag/components/screens/chatscreen.dart';
 import 'package:githubrag/components/screens/login.dart';
 import 'package:githubrag/constants/keys.dart';
+import 'package:githubrag/models/styles.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:flutter/material.dart';
@@ -82,7 +83,7 @@ class _GitHubLoginButtonState extends State<GitHubLoginButton> {
             ),
           ],
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(WidgetStyle.borderRadius),
           ),
         );
       },
@@ -113,9 +114,6 @@ class _GitHubLoginButtonState extends State<GitHubLoginButton> {
             if (_user != null)
               Column(
                 children: [
-                  const SizedBox(
-                    height: 10,
-                  ),
                   ElevatedButton.icon(
                     onPressed: _logout,
                     icon: const FaIcon(FontAwesomeIcons.github,
@@ -127,7 +125,8 @@ class _GitHubLoginButtonState extends State<GitHubLoginButton> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black, // Estilo GitHub
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius:
+                            BorderRadius.circular(WidgetStyle.borderRadius),
                       ),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 20),
@@ -137,9 +136,6 @@ class _GitHubLoginButtonState extends State<GitHubLoginButton> {
               )
             else
               Column(children: [
-                const SizedBox(
-                  height: 10,
-                ),
                 ElevatedButton.icon(
                   onPressed: _loginWithGithubPopUp,
                   icon: const FaIcon(FontAwesomeIcons.github,
@@ -149,8 +145,8 @@ class _GitHubLoginButtonState extends State<GitHubLoginButton> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black, // Estilo del botón GitHub
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(20), // Bordes redondeados
+                      borderRadius: BorderRadius.circular(
+                          WidgetStyle.borderRadius), // Bordes redondeados
                     ),
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 20),

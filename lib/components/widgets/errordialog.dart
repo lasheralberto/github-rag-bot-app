@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:githubrag/models/styles.dart';
 
 class ErrorDialogCustom extends StatelessWidget {
   final String title;
@@ -21,7 +22,7 @@ class ErrorDialogCustom extends StatelessWidget {
         ),
       ],
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(WidgetStyle.borderRadius),
       ),
     );
   }

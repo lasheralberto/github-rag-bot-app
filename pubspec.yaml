@@ -77,11 +77,10 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
- 
-    - media/images/indexing.gif
-    - media/images/indexing2.gif
+
     - media/images/logo.png
     - .env
+    - media/images/openai.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
