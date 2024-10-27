@@ -44,7 +44,6 @@ class MyApp extends StatelessWidget {
         ),
         home:
             //FirebaseAuth.instance.currentUser == null
-            //LoginScreen()
-            ChatScreen());
+            LoginScreen());
   }
 }
