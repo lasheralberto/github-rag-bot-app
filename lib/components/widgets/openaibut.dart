@@ -10,23 +10,26 @@ class OpenAiButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      label: const Text(
-        'API Key',
-        style: TextStyle(color: Colors.black),
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(
-              WidgetStyle.borderRadius), // Cambia a tu preferencia
+    return SizedBox(
+      height: 43,
+      child: ElevatedButton.icon(
+        label: const Text(
+          'API Key',
+          style: TextStyle(color: Colors.black),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+                WidgetStyle.borderRadius), // Cambia a tu preferencia
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        ),
+        onPressed: () {
+          _showApiKeyDialog(context, this.apikey);
+        },
+        icon: Image.asset('media/images/openai.png'),
       ),
-      onPressed: () {
-        _showApiKeyDialog(context, this.apikey);
-      },
-      icon: Image.asset('media/images/openai.png'),
     );
   }
 
