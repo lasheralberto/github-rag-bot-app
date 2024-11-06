@@ -68,6 +68,8 @@ class _ChatScreenState extends State<ChatScreen>
   List<Map<String, dynamic>> attachedFiles = [];
   bool? indexingDoc;
   bool isBotTyping = false; // Estado para controlar si el bot está escribiendo
+  // Añade el controller al inicio de la clase
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -95,6 +97,19 @@ class _ChatScreenState extends State<ChatScreen>
       User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
         await GetUserDataAndRepos(currentUser);
+      }
+    });
+  }
+
+  // Función para hacer scroll al último mensaje
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
       }
     });
   }
@@ -292,9 +307,6 @@ class _ChatScreenState extends State<ChatScreen>
                                       userRepos[index]['visibility'] == 'public'
                                           ? Colors.blue
                                           : Colors.red)),
-                          // leading: CircleAvatar(
-                          //     child:
-                          //         Text(userRepos[index].substring(0, 1).toUpperCase())),
                           title: Text(
                             userRepos[index]['name'].split('/')[1],
                             style: TextStyle(
@@ -466,79 +478,43 @@ class _ChatScreenState extends State<ChatScreen>
           if (!snapshot.hasData) {
             return const Center(child: Text('No conversations'));
           } else if (snapshot.hasData) {
-            List<Map<String, dynamic>> messages = snapshot.data!;
+            bool isuser = false;
+            List<Map<String, dynamic>> messages =
+                snapshot.data!.reversed.toList();
 
-            return ListView.builder(
-              reverse: true,
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final message = messages[index];
-                final isLastMessage = index == 0;
-
-                return isLastMessage
-                    ? _buildMessageBubble(message, applyFadeEffect: true)
-                    : _buildMessageBubble(message);
-              },
+            return Column(
+              children: [
+                Expanded(
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+                      return CodeFormattedView(
+                        message['text'],
+                        message['role'] == 'user',
+                        isBotResponse: message['role'] == 'assistant',
+                      );
+                    },
+                  ),
+                ),
+                if (isBotTyping == true)
+                  const SizedBox(
+                    height: 80,
+                    width: 80,
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      child: TypingIndicator(),
+                    ),
+                  )
+                else
+                  const SizedBox.shrink(),
+              ],
             );
           } else {
             return const Center(child: Text('Error'));
           }
         },
-      ),
-    );
-  }
-
-  Widget _buildMessageBubble(Map<String, dynamic> message,
-      {bool applyFadeEffect = false}) {
-    final content = message['text'];
-    final RoleUserMessage = message['role'];
-    bool isUserMessage = false;
-
-    if (RoleUserMessage == 'bot') {
-      isUserMessage = true;
-    }
-
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isUserMessage == false
-            ? AppColors.textUserBubble
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(WidgetStyle.borderRadius),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircleAvatar(
-            radius: 18.0,
-            backgroundColor: isUserMessage ? Colors.blue : Colors.white,
-            foregroundImage: isUserMessage
-                ? null
-                : AssetImage('media/images/logo.png'), // solo ejemplo
-            child: isUserMessage
-                ? Text(
-                    FirebaseAuth.instance.currentUser!.displayName![0]
-                        .toUpperCase(),
-                    style: const TextStyle(color: Colors.white),
-                  )
-                : null,
-          ),
-          const SizedBox(width: 15),
-          Flexible(
-              child: applyFadeEffect
-                  ? TextFadeIn(
-                      text: content,
-                      style: TextStyle(
-                        fontSize: TextSize.textBubbleChat,
-                        color: isUserMessage
-                            ? AppColors.textBubbleUserColor
-                            : AppColors.textBubbleAgentColor,
-                      ),
-                    )
-                  : CodeFormattedView(content, isUserMessage)),
-        ],
       ),
     );
   }
@@ -580,6 +556,7 @@ class _ChatScreenState extends State<ChatScreen>
         'role': 'user',
         'timestamp': FieldValue.serverTimestamp(),
       });
+      _scrollToBottom();
 
       // Get bot response
       try {
@@ -607,6 +584,8 @@ class _ChatScreenState extends State<ChatScreen>
           isMessageRepliedByBot = true;
           isBotTyping = false;
         });
+        // Hacer scroll al último mensaje después de recibir la respuesta
+        _scrollToBottom();
       } catch (e) {
         print('Error getting bot response: $e');
         setState(() {
@@ -727,7 +706,7 @@ class _ChatScreenState extends State<ChatScreen>
       // Specify allowed file types
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'docx', 'txt'],
+        allowedExtensions: ['txt'],
       );
 
       if (result != null) {
@@ -736,11 +715,11 @@ class _ChatScreenState extends State<ChatScreen>
         String fileExtension = path.extension(fileName).toLowerCase();
 
         // Verify file extension
-        if (!['.pdf', '.docx', '.txt'].contains(fileExtension)) {
+        if (!['.txt'].contains(fileExtension)) {
           showDialog(
             context: context,
             builder: (context) => const ErrorDialogCustom(
-              message: 'Only PDF, DOCX, and TXT files are allowed',
+              message: 'For the moment, only TXT files are allowed',
               title: 'Invalid File Type',
             ),
           );

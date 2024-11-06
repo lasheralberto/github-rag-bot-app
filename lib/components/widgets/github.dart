@@ -116,9 +116,28 @@ class _GitHubLoginButtonState extends State<GitHubLoginButton> {
               Column(
                 children: [
                   Tooltip(
-                    message: 'Press to logout',
+                    message: ModalRoute.of(context)?.settings.name == 'chatScreen'  ? 'Press to logout': 'Press to login',
                     child: ElevatedButton.icon(
-                      onPressed: _logout,
+                      onPressed: () {
+                        final currentRoute =
+                            ModalRoute.of(context)?.settings.name;
+
+                        if (currentRoute == 'chatScreen' &&
+                            auth.FirebaseAuth.instance.currentUser != null) {
+                          _logout();
+                        } else if (auth.FirebaseAuth.instance.currentUser !=
+                            null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ChatScreen(),
+                              settings: const RouteSettings(name: 'chatScreen'),
+                            ),
+                          );
+                        } else {
+                          _logout();
+                        }
+                      },
                       icon: CircleAvatar(
                         backgroundImage:
                             NetworkImage(_user!.photoURL.toString()),

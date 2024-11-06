@@ -19,9 +19,16 @@ class _LoginScreenState extends State<LoginScreen>
   int _currentIndex = 0;
 
   final List<String> slogans = [
-    "Decode your team's code like a pro!",
-    "Ask it, crack it, code it!",
-    "Crack the code, ask away!",
+    "Git answers to all your repo questions!",
+    "Connect, ask, and conquer your code!",
+    "Your GitHub, your questions—solved!",
+    "Instant insights into your repos!",
+    "Explore your code, question by question.",
+    "Answers to all things GitHub, right here!",
+    "Your GitHub decoded—ask anything!",
+    "Every repo answer, just a question away!",
+    "Discover what your repos have to say!",
+    "Git it? Ask it. Know it!"
   ];
 
   @override
@@ -29,7 +36,7 @@ class _LoginScreenState extends State<LoginScreen>
     super.initState();
 
     _controller = AnimationController(
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 2),
       vsync: this,
     );
 
