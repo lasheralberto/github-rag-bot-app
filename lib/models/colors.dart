@@ -14,7 +14,7 @@ class AppColors {
   static const Color textUserBubble = Color.fromARGB(255, 189, 211, 222);
   static const Color textBubbleUserColor = Colors.white;
   static const Color textBubbleAgentColor = Colors.black;
-  static const Color repoList = Colors.blueGrey;
+  static const Color repoList = Color.fromARGB(255, 24, 31, 80);
   static const Color repoListCardBehind = AppColors.loginBackground;
   static const Color sendChatButton = Colors.orangeAccent;
 }

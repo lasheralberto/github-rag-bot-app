@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:githubrag/components/screens/chatscreen.dart';
 import 'package:githubrag/components/screens/login.dart';
 import 'package:githubrag/constants/keys.dart';
+import 'package:githubrag/models/colors.dart';
 import 'package:githubrag/models/styles.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart' as auth;
@@ -114,22 +115,49 @@ class _GitHubLoginButtonState extends State<GitHubLoginButton> {
             if (_user != null)
               Column(
                 children: [
-                  ElevatedButton.icon(
-                    onPressed: _logout,
-                    icon: const FaIcon(FontAwesomeIcons.github,
-                        color: Colors.white),
-                    label: const Text(
-                      "Logout",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black, // Estilo GitHub
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(WidgetStyle.borderRadius),
+                  Tooltip(
+                    message: 'Press to logout',
+                    child: ElevatedButton.icon(
+                      onPressed: _logout,
+                      icon: CircleAvatar(
+                        backgroundImage:
+                            NetworkImage(_user!.photoURL.toString()),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 20),
+                      label: SizedBox(
+                        width: 150, // Define el ancho máximo aquí
+                        child: ShaderMask(
+                          shaderCallback: (bounds) => LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [
+                              Colors.white,
+                              Colors.white.withOpacity(0.8),
+                              Colors.white.withOpacity(
+                                  0.2), // Ajusta el difuminado aquí
+                            ],
+                            stops: const [
+                              0.7,
+                              0.9,
+                              1.0
+                            ], // Controla la intensidad del difuminado
+                          ).createShader(bounds),
+                          child: Text(
+                            _user!.displayName.toString(),
+                            style: const TextStyle(color: Colors.white),
+                            overflow: TextOverflow.ellipsis,
+                            softWrap: false,
+                          ),
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.repoList,
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(WidgetStyle.borderRadius),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 20),
+                      ),
                     ),
                   ),
                 ],

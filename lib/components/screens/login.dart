@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:githubrag/components/screens/chatscreen.dart';
+import 'package:githubrag/components/widgets/animatedgradient.dart';
 import 'package:githubrag/components/widgets/animatedlogo.dart';
 import 'package:githubrag/components/widgets/github.dart';
 import 'package:githubrag/models/colors.dart';
@@ -61,72 +62,75 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.loginBackground,
-      body: Stack(
-        children: [
-          Center(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(40.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    AnimatedLogoText(
-                      indexing: false,
-                    ),
-                    const SizedBox(height: 20),
-                    FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: Text(
-                        slogans[_currentIndex],
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+    return AnimatedGradientBackground(
+      child: Scaffold(
+        backgroundColor: Colors
+            .transparent, // Importante: cambia el backgroundColor a transparente
+        body: Stack(
+          children: [
+            Center(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(40.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      AnimatedLogoText(
+                        indexing: false,
+                      ),
+                      const SizedBox(height: 20),
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: Text(
+                          slogans[_currentIndex],
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
+                      const SizedBox(height: 20),
+                      GitHubLoginButton(
+                        onUserData: (user) {},
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                color: Colors.transparent, // Cambiado a transparente
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    TextButton(
+                      onPressed: _showPrivacyPolicy,
+                      child: const Text(
+                        'Privacy Policy',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
-                    const SizedBox(height: 20),
-                    GitHubLoginButton(
-                      onUserData: (user) {},
+                    TextButton(
+                      onPressed: _showAboutUs,
+                      child: const Text(
+                        'About Us',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              color: AppColors.loginBackground.withOpacity(0.8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  TextButton(
-                    onPressed: _showPrivacyPolicy,
-                    child: const Text(
-                      'Privacy Policy',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: _showAboutUs,
-                    child: const Text(
-                      'About Us',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

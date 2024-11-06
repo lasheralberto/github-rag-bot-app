@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/github.dart';
+import 'package:githubrag/components/widgets/textfadein.dart';
 import 'package:githubrag/models/colors.dart';
 import 'package:githubrag/models/styles.dart';
 import 'package:githubrag/models/text.dart';
@@ -15,95 +16,87 @@ class CodeFormattedView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Ejemplo de string: "Este es el ejemplo del codigo:\n''' python\n(Python code '''\n"
-    // Dividir el contenido entre texto y código
-    final parts =
-        content.split("```"); // Asume que el código está entre comillas triples
-
-    // El primer elemento es el texto, el segundo es el código
+    final parts = content.split("```");
     final textPart = parts[0].trim();
     final codePart = parts.length > 1 ? parts[1].trim() : "";
     var lang = codePart.split('\n')[0];
 
     return Padding(
       padding: const EdgeInsets.all(8.0),
-      child: SingleChildScrollView(
+      child: Align(
+        alignment:
+            isUserOrAgentMessage ? Alignment.centerRight : Alignment.centerLeft,
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: isUserOrAgentMessage
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
-            // Mostrar la parte de texto
+            // Parte de texto
             Container(
               margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isUserOrAgentMessage == true
+                color: isUserOrAgentMessage
                     ? AppColors.textUserBubble
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(WidgetStyle.borderRadius),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  isUserOrAgentMessage == false
-                      ? const CircleAvatar(
-                          radius: 18.0,
-                          backgroundColor: Colors.white,
-                          foregroundImage: AssetImage('media/images/logo.png'),
-                        )
-                      : CircleAvatar(
-                          radius: 15.0,
-                          backgroundColor:
-                              Colors.blue, // Puedes cambiar el color de fondo
-                          child: Text(
-                            FirebaseAuth.instance.currentUser!.displayName!
-                                    .isNotEmpty
-                                ? FirebaseAuth
-                                    .instance.currentUser!.displayName![0]
-                                    .toUpperCase()
-                                : '', // Mostrar la primera letra en mayúscula
-                            style: const TextStyle(
-                                color:
-                                    Colors.white), // Color y estilo del texto
-                          ),
-                        ),
-                  const SizedBox(
-                    width: 15,
-                  ),
+                  if (!isUserOrAgentMessage)
+                    const CircleAvatar(
+                      radius: 18.0,
+                      backgroundColor: Colors.white,
+                      foregroundImage: AssetImage('media/images/logo.png'),
+                    ),
+                  if (!isUserOrAgentMessage) const SizedBox(width: 8),
                   Flexible(
-                    child: SelectableText(
-                      textPart,
+                    child: TextFadeIn(
+                      text: textPart,
                       style: TextStyle(
-                          fontSize: TextSize.textBubbleChat,
-                          color: isUserOrAgentMessage == true
-                              ? AppColors.textBubbleUserColor
-                              : AppColors.textBubbleAgentColor),
+                        fontSize: TextSize.textBubbleChat,
+                        color: isUserOrAgentMessage
+                            ? AppColors.textBubbleUserColor
+                            : AppColors.textBubbleAgentColor,
+                      ),
                     ),
                   ),
+                  if (isUserOrAgentMessage) const SizedBox(width: 8),
+                  if (isUserOrAgentMessage)
+                    CircleAvatar(
+                      radius: 15.0,
+                      backgroundColor: Colors.blue,
+                      child: Text(
+                        FirebaseAuth
+                                .instance.currentUser!.displayName!.isNotEmpty
+                            ? FirebaseAuth.instance.currentUser!.displayName![0]
+                                .toUpperCase()
+                            : '',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-            // Mostrar la parte de código resaltado
-
+            // Parte de código resaltado
             if (codePart.isNotEmpty)
               Stack(
                 children: [
                   HighlightView(
-                    codePart, // Mostrar el bloque de código
-                    language:
-                        lang, // Puedes detectar el lenguaje dinámicamente si es necesario
-                    theme: githubTheme, // El tema para resaltar el código
+                    codePart,
+                    language: lang,
+                    theme: githubTheme,
                     padding: const EdgeInsets.all(36),
                     textStyle: const TextStyle(
-                      fontFamily: 'monospace', // Fuente de código
+                      fontFamily: 'monospace',
                       fontSize: 12,
                     ),
                   ),
                   Positioned(
-                    top: 12, // Ajusta la posición vertical del botón
-                    right: 8, // Ajusta la posición horizontal del botón
+                    top: 12,
+                    right: 8,
                     child: IconButton(
                       icon: const Icon(Icons.copy),
                       iconSize: 20.0,
@@ -121,7 +114,7 @@ class CodeFormattedView extends StatelessWidget {
                     ),
                   ),
                 ],
-              )
+              ),
           ],
         ),
       ),
